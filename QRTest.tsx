@@ -23,22 +23,13 @@ interface HighlightBoxProps {
 }
 
 const HighlightBox: React.FC<HighlightBoxProps> = ({ highlight, layout, scanFrame }) => {
-    const scaleX = layout.width / scanFrame.width;
-    const scaleY = layout.height / scanFrame.height;
+    const isLandscapeFrame = scanFrame.width > scanFrame.height;
+    
+    const frameWidth = isLandscapeFrame ? scanFrame.width : scanFrame.height;
+    const frameHeight = isLandscapeFrame ? scanFrame.height : scanFrame.width;
 
-    console.log('HighlightBox Props:', {
-        highlight,
-        layout,
-        scanFrame,
-        scaleX,
-        scaleY,
-        calculatedStyle: {
-            left: highlight.x * scaleX,
-            top: highlight.y * scaleY,
-            width: highlight.width * scaleX,
-            height: highlight.height * scaleY,
-        }
-    });
+    const scaleX = layout.width / frameHeight; 
+    const scaleY = layout.height / frameWidth;
 
     return (
         <View
@@ -54,6 +45,8 @@ const HighlightBox: React.FC<HighlightBoxProps> = ({ highlight, layout, scanFram
         />
     );
 };
+
+
 
 const NoCameraDeviceError = () => (
     <View style={styles.errorContainer}>
@@ -71,33 +64,25 @@ function QRScanner() {
         height: 0,
     });
     const device = useCameraDevice('back');
+const codeScanner = useCodeScanner({
+    codeTypes: ['qr', 'code-128'],
+    onCodeScanned: (codes: Code[], frame: CodeScannerFrame) => {
+        setScanFrame(frame);
+        
+        const highlights = codes.map(code => {
+            const { x, y, width, height } = code.frame;
+            return {
+                x: frame.height - y - height, 
+                y: x,
+                width: height,
+                height: width,
+            };
+        });
 
-    const codeScanner = useCodeScanner({
-        codeTypes: ['qr', 'code-128'],
-        onCodeScanned: (codes: Code[], frame: CodeScannerFrame) => {
-            console.log('QR Code Scanned:', {
-                codesCount: codes.length,
-                frame,
-                codes: codes.map(code => ({
-                    value: code.value,
-                    type: code.type,
-                    frame: code.frame,
-                }))
-            });
+        setCodeScannerHighlights(highlights);
+    },
+});
 
-            setScanFrame(frame);
-            const highlights = codes.map(code => ({
-                // For portrait mode with landscape sensor, rotate coordinates
-                x: code.frame?.y ?? 0,
-                y: code.frame?.x ?? 0,
-                width: code.frame?.height ?? 0,
-                height: code.frame?.width ?? 0,
-            }));
-
-            console.log('Setting highlights:', highlights);
-            setCodeScannerHighlights(highlights);
-        },
-    });
 
     const onLayout = (evt: LayoutChangeEvent) => {
         if (evt.nativeEvent.layout) {
