@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, Linking } from 'react-native';
 import {
     Camera,
     useCameraDevice,
@@ -46,8 +46,6 @@ const HighlightBox: React.FC<HighlightBoxProps> = ({ highlight, layout, scanFram
     );
 };
 
-
-
 const NoCameraDeviceError = () => (
     <View style={styles.errorContainer}>
         <Text style={styles.errorText}>No camera device found</Text>
@@ -63,7 +61,23 @@ function QRScanner() {
         width: 0,
         height: 0,
     });
+    const [hasPermission, setHasPermission] = useState(false);
     const device = useCameraDevice('back');
+
+    useEffect(() => {
+        const requestCameraPermission = async () => {
+            try {
+                const status = await Camera.requestCameraPermission();
+                console.log('Camera permission status:', status);
+                setHasPermission(status === 'granted');
+            } catch (error) {
+                console.error('Permission request error:', error);
+                setHasPermission(false);
+            }
+        };
+
+        requestCameraPermission();
+    }, []);
 const codeScanner = useCodeScanner({
     codeTypes: ['qr', 'code-128'],
     onCodeScanned: (codes: Code[], frame: CodeScannerFrame) => {
@@ -90,6 +104,14 @@ const codeScanner = useCodeScanner({
             setLayout(evt.nativeEvent.layout);
         }
     };
+
+    if (!hasPermission) {
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Camera permission required</Text>
+            </View>
+        );
+    }
 
     if (device == null) return <NoCameraDeviceError />;
     console.log('QRScanner Render:', {
